@@ -1,6 +1,4 @@
 
-Mana optimallashtirilgan va chiroyli README:
-
 ---
 
 # 🌟 PHP Telegram Bot
