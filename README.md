@@ -1,112 +1,108 @@
+# PHP Telegram Bot
 
----
+Telegram Bot API uchun oddiy PHP kutubxona. Premium emoji, tugma style lari va Bot API 9.4+ funksiyalarni qo'llab-quvvatlaydi.
 
-# 🌟 PHP Telegram Bot
+## O'rnatish
 
-PHP yordamida Telegram botlarini yaratish uchun oson va qulay kutubxona. Ushbu repository Telegram Bot API bilan ishlashni sezilarli darajada soddalashtiradi.
-
----
-
-## 📋 Talablar
-
-- **PHP 7.4 yoki undan yuqori**  
-- `cURL` PHP kengaytmasi faol bo'lishi kerak  
-- Telegram API tokeni — [BotFather](https://t.me/BotFather) orqali olinadi  
-
----
-
-## 🚀 O'rnatish
-
-1. **Repositoryni klonlash:**
-   ```bash
-   git clone https://github.com/BotirRaimqulov/phptelegrambot.git
-   cd phptelegrambot
-   ```
-
-2. **Bot tokenini kiritish:**
-   Faylda tokeningizni yangilang:
-   ```php
-   $api_key = 'YOUR_BOT_TOKEN';
-   ```
-
----
-
-## 📦 Foydalanish
-
-### **Webhook sozlash**
-Telegram botingizni to'g'ri ishlashi uchun webhook o'rnatishingiz kerak. Quyidagi koddan foydalaning:
-
-```php
-require_once 'telegram.php';
-
-$api_key = 'YOUR_BOT_TOKEN';
-$telegram = new Telegram($api_key);
-
-$webhook_url = 'https://your-domain.com/bot.php';
-$response = $telegram->setWebhook($webhook_url);
-
-if ($response['ok']) {
-    echo "Webhook muvaffaqiyatli o'rnatildi!";
-} else {
-    echo "Webhookni o'rnatishda xatolik yuz berdi!";
-}
+1. `telegram.php` va `bot.php` ni serverga yuklang
+2. `bot.php` dagi `BOT_TOKEN` ni o'z tokeningiz bilan almashtiring
+3. Webhook o'rnating:
+```
+https://api.telegram.org/bot<TOKEN>/setWebhook?url=https://yourdomain.com/bot.php
 ```
 
-### **Foydalanuvchilarning xabarlarini qayta ishlash**
-Foydalanuvchilar tomonidan yuborilgan xabarlarni boshqarish uchun `bot.php` fayli tuzilgan. Quyida oddiy misol:
+## Premium Emoji
 
+Bot API 9.4 dan boshlab botlar premium (custom) emoji ishlatishi mumkin. Shart: bot egasi Telegram Premium obunachisi bo'lishi kerak yoki bot Fragment orqali qo'shimcha username sotib olgan bo'lishi kerak.
+
+### 1. HTML orqali
 ```php
-require_once 'telegram.php';
-
-$api_key = 'YOUR_BOT_TOKEN';
-$telegram = new Telegram($api_key);
-
-$update = $telegram->update();
-$chat_id = $update['message']['chat']['id'] ?? null;
-$text = $update['message']['text'] ?? null;
-
-if ($chat_id && $text) {
-    if ($text === '/start') {
-        $telegram->sendMessage($chat_id, "Salom! Botimizga xush kelibsiz.");
-    } elseif ($text === '/help') {
-        $telegram->sendMessage($chat_id, "Bu bot Telegram API bilan ishlash uchun yaratilgan.");
-    } else {
-        $telegram->sendMessage($chat_id, "Siz yuborgan: $text");
-    }
-}
+$telegram->sendPremiumMessage($chatId,
+    '<tg-emoji emoji-id="5368324170671202286">🔥</tg-emoji> Salom!',
+    "HTML"
+);
 ```
 
----
+### 2. MarkdownV2 orqali
+```php
+$telegram->sendPremiumMessage($chatId,
+    '![🔥](tg://emoji?id=5368324170671202286) Salom\!',
+    "MarkdownV2"
+);
+```
 
-## 🔑 Asosiy Funksiyalar
+### 3. Entities orqali (parse_mode kerak emas)
+```php
+$text = "🔥 Premium emoji";
+$entities = [
+    [
+        "type" => "custom_emoji",
+        "offset" => 0,
+        "length" => $telegram->utf16len("🔥"),
+        "custom_emoji_id" => "5368324170671202286",
+    ],
+];
+$telegram->sendMessageEntities($chatId, $text, $entities);
+```
 
-`telegram.php` klassi Telegram Bot API bilan ishlashni soddalashtiradigan quyidagi funksiyalarni o'z ichiga oladi:
+## Inline tugmalarda Premium Emoji va Style
 
-| Funksiya                 | Ta'rifi                                                     |
-|--------------------------|------------------------------------------------------------|
-| **sendMessage**          | Matnli xabar yuboradi                                      |
-| **sendPhoto**            | Foydalanuvchiga rasm yuboradi                              |
-| **sendDocument**         | Hujjat yuboradi                                            |
-| **deleteMessage**        | Xabarni o'chiradi                                          |
-| **editMessageText**      | Yuborilgan xabarni tahrirlaydi                             |
+Bot API 9.4+ da tugmalarga `icon_custom_emoji_id` va `style` berish mumkin.
 
-Misollar:
+Style turlari:
+- `"success"` — yashil
+- `"danger"` — qizil
+- `"primary"` — ko'k
 
-- **Matnli xabar yuborish:**
-  ```php
-  $telegram->sendMessage($chat_id, "Xabar matni", "markdown");
-  ```
+```php
+$keyboard = [
+    [
+        ["text" => "Ha", "callback_data" => "yes", "icon_custom_emoji_id" => "5471952986970267163", "style" => "success"],
+        ["text" => "Yoq", "callback_data" => "no", "icon_custom_emoji_id" => "5382322671028990089", "style" => "danger"],
+    ],
+    [
+        ["text" => "Batafsil", "callback_data" => "info", "style" => "primary"],
+    ],
+];
 
-- **Rasm yuborish:**
-  ```php
-  $telegram->sendPhoto($chat_id, "https://example.com/image.jpg", "Rasm tavsifi");
-  ```
+$telegram->sendPremiumMessage($chatId, "Tanlang:", "HTML", $keyboard);
+```
 
----
+## Emoji ID ni qanday topish
 
-## 🛠 Hissa Qo'shish
+1. Botga premium emoji yuboring — bot ID ni qaytaradi
+2. Yoki `@EmojiInfoBot` dan foydalaning
 
-- Har qanday taklif va xatoliklar haqida **Issues** bo'limida xabar bering.
-- Yaxshilanishlar yoki yangi funksiyalar uchun **Pull Request** yuborishingiz mumkin.
+## Methodlar
 
----
+| Method | Tavsif |
+|---|---|
+| `sendMessage()` | Oddiy xabar yuborish |
+| `sendMessageEntities()` | Entities bilan xabar (premium emoji) |
+| `sendPremiumMessage()` | Premium emoji + inline tugmalar |
+| `editPremiumMessage()` | Premium xabarni tahrirlash |
+| `answerCallbackQuery()` | Callback javob |
+| `utf16len()` | UTF-16 uzunlik hisoblash |
+| `sendPhoto()` | Rasm yuborish |
+| `sendVideo()` | Video yuborish |
+| `sendAudio()` | Audio yuborish |
+| `sendDocument()` | Hujjat yuborish |
+| `editMessageText()` | Xabar matnini tahrirlash |
+| `editMessageReplyMarkup()` | Tugmalarni tahrirlash |
+| `editMessageCaption()` | Caption tahrirlash |
+| `copyMessage()` | Xabarni nusxalash |
+| `deleteMessage()` | Xabarni o'chirish |
+| `sendChatAction()` | Chat action yuborish |
+| `setWebhook()` | Webhook o'rnatish |
+
+## Bot commandlari
+
+| Command | Tavsif |
+|---|---|
+| `/start` | Boshlash |
+| `/html` | HTML orqali premium emoji |
+| `/markdown` | MarkdownV2 orqali premium emoji |
+| `/entities` | Entities orqali premium emoji |
+| `/menu` | Premium emoji + rangli tugmalar |
+
+Premium emoji yuborilsa — avtomatik ID ni qaytaradi.
