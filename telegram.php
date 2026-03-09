@@ -8,7 +8,6 @@ class Telegram
         $this->api_key = $api_key;
     }
 
-    // Send requests
     public function bot($method, $datas = [])
     {
         $url = "https://api.telegram.org/bot" . $this->api_key . "/" . $method;
@@ -48,6 +47,46 @@ class Telegram
         return json_decode($res, true);
     }
 
+    public function botJson($method, $datas = [])
+    {
+        $url = "https://api.telegram.org/bot" . $this->api_key . "/" . $method;
+        $curl = curl_init();
+
+        curl_setopt_array($curl, array(
+            CURLOPT_URL => $url,
+            CURLOPT_RETURNTRANSFER => true,
+            CURLOPT_ENCODING => '',
+            CURLOPT_TIMEOUT => 0,
+            CURLOPT_FOLLOWLOCATION => true,
+            CURLOPT_HTTP_VERSION => CURL_HTTP_VERSION_1_1,
+            CURLOPT_CUSTOMREQUEST => 'POST',
+            CURLOPT_HTTPHEADER => ['Content-Type: application/json'],
+            CURLOPT_POSTFIELDS => json_encode($datas)
+        ));
+
+        $multi_curl = curl_multi_init();
+        curl_multi_add_handle($multi_curl, $curl);
+
+        $active = null;
+        do {
+            $status = curl_multi_exec($multi_curl, $active);
+            if ($active) {
+                curl_multi_select($multi_curl);
+            }
+        } while ($status === CURLM_CALL_MULTI_PERFORM || $active);
+
+        $res = curl_multi_getcontent($curl);
+
+        curl_multi_remove_handle($multi_curl, $curl);
+        curl_multi_close($multi_curl);
+
+        if (curl_error($curl)) {
+            throw new \Exception(curl_error($curl));
+        }
+
+        return json_decode($res, true);
+    }
+
     public function sendMessage($chatId, $text, $parseMode = null, $replyMarkup = null)
     {
         $params = [
@@ -59,6 +98,78 @@ class Telegram
         ];
 
         return $this->bot('sendMessage', $params);
+    }
+
+    public function sendMessageEntities($chatId, $text, $entities = [], $replyMarkup = null)
+    {
+        $params = [
+            'chat_id' => $chatId,
+            'text' => $text,
+        ];
+        if (!empty($entities)) {
+            $params['entities'] = $entities;
+        }
+        if ($replyMarkup) {
+            $params['reply_markup'] = $replyMarkup;
+        }
+        return $this->botJson('sendMessage', $params);
+    }
+
+    //
+    //   $keyboard = [
+    //       [
+    //           ["text" => "Ha", "callback_data" => "yes", "icon_custom_emoji_id" => "...", "style" => "success"],
+    //           ["text" => "Yoq", "callback_data" => "no", "style" => "danger"],
+    //       ],
+    //   ];
+    //
+    public function sendPremiumMessage($chatId, $text, $parseMode = null, $keyboard = null, $entities = null)
+    {
+        $params = [
+            'chat_id' => $chatId,
+            'text' => $text,
+        ];
+        if ($parseMode) {
+            $params['parse_mode'] = $parseMode;
+        }
+        if ($entities) {
+            $params['entities'] = $entities;
+        }
+        if ($keyboard) {
+            $params['reply_markup'] = ['inline_keyboard' => $keyboard];
+        }
+        return $this->botJson('sendMessage', $params);
+    }
+
+    public function editPremiumMessage($chatId, $messageId, $text, $parseMode = null, $keyboard = null, $entities = null)
+    {
+        $params = [
+            'chat_id' => $chatId,
+            'message_id' => $messageId,
+            'text' => $text,
+        ];
+        if ($parseMode) {
+            $params['parse_mode'] = $parseMode;
+        }
+        if ($entities) {
+            $params['entities'] = $entities;
+        }
+        if ($keyboard) {
+            $params['reply_markup'] = ['inline_keyboard' => $keyboard];
+        }
+        return $this->botJson('editMessageText', $params);
+    }
+
+    public function answerCallbackQuery($callbackQueryId, $text = null, $showAlert = false)
+    {
+        $params = [
+            'callback_query_id' => $callbackQueryId,
+            'show_alert' => $showAlert,
+        ];
+        if ($text) {
+            $params['text'] = $text;
+        }
+        return $this->bot('answerCallbackQuery', $params);
     }
 
     public function editMessageText($chatId, $message_id, $text, $parseMode = null, $replyMarkup = null)
@@ -182,6 +293,10 @@ class Telegram
         return $this->bot('setWebhook', $params);
     }
 
+    public function utf16len($s)
+    {
+        return strlen(mb_convert_encoding($s, "UTF-16LE", "UTF-8")) / 2;
+    }
 
     public function update()
     {
