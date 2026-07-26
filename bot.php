@@ -124,20 +124,26 @@ if ($update) {
     }
 
 
-    if ($tx == "/secret") {
-        $userId = $msg['from']['id'];
-        $res = $telegram->sendEphemeralMessage($chatId, $userId,
-            "<tg-emoji emoji-id=\"$STAR\">⭐</tg-emoji> Bu xabarni faqat siz ko'rasiz.",
-            "HTML"
-        );
+    if (strpos($tx, "/secret") === 0) {
+        $args = preg_split('/\s+/', trim($tx), -1, PREG_SPLIT_NO_EMPTY);
+        array_shift($args);
+        $targetUserId = array_pop($args);
+        $messageText = implode(" ", $args);
+
+        if (empty($messageText) || !ctype_digit((string)$targetUserId)) {
+            $telegram->sendMessage($chatId, "Foydalanish: /secret {matn} {user_id}");
+        } else {
+            $telegram->sendEphemeralMessage($chatId, $targetUserId, $messageText, "HTML");
+        }
     }
 
 
     if ($tx == "/poll") {
-        $telegram->sendPoll($chatId, "Sevimli tilingiz?", ["PHP", "Python", "JavaScript"], true, "regular", [
-            "allows_multiple_answers" => false,
-            "members_only" => true,
-        ]);
+        $extra = ["allows_multiple_answers" => false];
+        if ($type == "channel") {
+            $extra["members_only"] = true;
+        }
+        $telegram->sendPoll($chatId, "Sevimli tilingiz?", ["PHP", "Python", "JavaScript"], true, "regular", $extra);
     }
 
 
