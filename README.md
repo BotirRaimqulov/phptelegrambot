@@ -2,6 +2,7 @@
 
 Telegram Bot API uchun oddiy PHP kutubxona. Premium emoji, tugma style lari va Bot API 10.2 funksiyalarni qo'llab-quvvatlaydi.
 
+
 ## O'rnatish
 
 1. `telegram.php` va `bot.php` ni serverga yuklang
