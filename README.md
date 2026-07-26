@@ -204,5 +204,11 @@ $telegram->sendLivePhoto($chatId, $fileId, "Jonli surat");
 | `/markdown` | MarkdownV2 orqali premium emoji |
 | `/entities` | Entities orqali premium emoji |
 | `/menu` | Premium emoji + rangli tugmalar |
+| `/rich` | Bloklardan iborat rich message |
+| `/secret` | Maxfiy (ephemeral) xabar |
+| `/poll` | So'rovnoma (members_only) |
+| `/admins` | Chat adminlari ro'yxati |
 
 Premium emoji yuborilsa — avtomatik ID ni qaytaradi.
+
+Guruhda guest so'rov (`guest_message`) yoki qo'shilish so'rovi (`chat_join_request`) kelganda bot avtomatik javob beradi.
