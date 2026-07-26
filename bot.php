@@ -113,6 +113,68 @@ if ($update) {
     }
 
 
+    if ($tx == "/rich") {
+        $blocks = [
+            ["type" => "heading", "text" => "Bot API 10.2"],
+            ["type" => "paragraph", "text" => "Bu rich message bloklardan iborat."],
+            ["type" => "quotation", "text" => "Bloklar orqali chiroyli formatlash."],
+            ["type" => "preformatted", "text" => "echo 'Salom, dunyo!';"],
+        ];
+        $telegram->sendRichMessage($chatId, $blocks);
+    }
+
+
+    if ($tx == "/secret") {
+        $userId = $msg['from']['id'];
+        $res = $telegram->sendEphemeralMessage($chatId, $userId,
+            "<tg-emoji emoji-id=\"$STAR\">⭐</tg-emoji> Bu xabarni faqat siz ko'rasiz.",
+            "HTML"
+        );
+    }
+
+
+    if ($tx == "/poll") {
+        $telegram->sendPoll($chatId, "Sevimli tilingiz?", ["PHP", "Python", "JavaScript"], true, "regular", [
+            "allows_multiple_answers" => false,
+            "members_only" => true,
+        ]);
+    }
+
+
+    if ($tx == "/admins") {
+        $res = $telegram->getChatAdministrators($chatId, true);
+        $names = [];
+        foreach (($res['result'] ?? []) as $admin) {
+            $names[] = $admin['user']['first_name'] ?? 'Admin';
+        }
+        $telegram->sendMessage($chatId, "Adminlar: " . implode(", ", $names));
+    }
+
+
+    if (isset($update['guest_message'])) {
+        $guest = $update['guest_message'];
+        $guestQueryId = $guest['guest_query_id'];
+        $telegram->answerGuestQuery($guestQueryId,
+            "<tg-emoji emoji-id=\"$ROCKET\">🚀</tg-emoji> Salom, mehmon!",
+            "HTML"
+        );
+    }
+
+
+    if (isset($update['chat_join_request'])) {
+        $req = $update['chat_join_request'];
+        $queryId = $req['query_id'] ?? null;
+        if ($queryId) {
+            $keyboard = [
+                [
+                    ["text" => "Tasdiqlash", "callback_data" => "join_ok", "style" => "success"],
+                ],
+            ];
+            $telegram->answerChatJoinRequestQuery($queryId, "Guruhga qo'shilish uchun tasdiqlang:", $keyboard);
+        }
+    }
+
+
     if (isset($entities) && !empty($entities)) {
         $ids = [];
         foreach ($entities as $e) {
