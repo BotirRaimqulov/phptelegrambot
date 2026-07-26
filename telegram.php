@@ -225,7 +225,7 @@ class Telegram
         if ($keyboard) {
             $params['reply_markup'] = ['inline_keyboard' => $keyboard];
         }
-        return $this->botJson('sendMessage', $params);
+        return $this->botJson('sendRichMessage', $params);
     }
 
     public function sendRichMessageDraft($chatId, $blocks)
