@@ -1,6 +1,6 @@
 # PHP Telegram Bot
 
-Telegram Bot API uchun oddiy PHP kutubxona. Premium emoji, tugma style lari va Bot API 9.4+ funksiyalarni qo'llab-quvvatlaydi.
+Telegram Bot API uchun oddiy PHP kutubxona. Premium emoji, tugma style lari va Bot API 10.2 funksiyalarni qo'llab-quvvatlaydi.
 
 ## O'rnatish
 
@@ -68,6 +68,91 @@ $keyboard = [
 $telegram->sendPremiumMessage($chatId, "Tanlang:", "HTML", $keyboard);
 ```
 
+## Ephemeral (maxfiy) xabarlar — Bot API 10.2
+
+Guruhda faqat bitta foydalanuvchiga ko'rinadigan xabar yuborish mumkin. Xabarni bot va qabul qiluvchi foydalanuvchi ko'radi, boshqalar ko'rmaydi.
+
+```php
+$res = $telegram->sendEphemeralMessage(
+    $chatId,
+    $userId,
+    "Bu xabarni faqat siz ko'ryapsiz.",
+    "HTML"
+);
+
+$ephemeralId = $res['result']['ephemeral_message_id'];
+```
+
+Callback query ga javob sifatida (tugma bosilganda) yuborish:
+
+```php
+$telegram->sendEphemeralMessage($chatId, $userId, "Faqat sizga.", "HTML", null, $callbackQueryId);
+```
+
+Ephemeral xabarni tahrirlash va o'chirish:
+
+```php
+$telegram->editEphemeralMessageText($chatId, $ephemeralId, "Yangilangan matn", "HTML");
+$telegram->editEphemeralMessageReplyMarkup($chatId, $ephemeralId, $keyboard);
+$telegram->deleteEphemeralMessage($chatId, $ephemeralId);
+```
+
+## Rich Messages (bloklar) — Bot API 10.2
+
+Xabarni bloklardan qurish mumkin: paragraf, sarlavha, ro'yxat, iqtibos, kod bloki, jadval va boshqalar.
+
+```php
+$blocks = [
+    ["type" => "heading", "text" => "Sarlavha"],
+    ["type" => "paragraph", "text" => "Bu oddiy paragraf matni."],
+    ["type" => "quotation", "text" => "Bu iqtibos bloki."],
+    ["type" => "preformatted", "text" => "echo 'kod bloki';"],
+];
+
+$telegram->sendRichMessage($chatId, $blocks);
+```
+
+## Guest Mode — Bot API 10.0
+
+Bot a'zo bo'lmagan chatlarda ham xabar olib, javob bera oladi. Guest so'roviga javob:
+
+```php
+$telegram->answerGuestQuery($guestQueryId, "Salom, mehmon!", "HTML");
+```
+
+## Chat Join Request Queries — Bot API 10.1
+
+Guruhga qo'shilish so'roviga interaktiv javob (tugmalar bilan) yoki Web App yuborish:
+
+```php
+$telegram->answerChatJoinRequestQuery($queryId, "Savolga javob bering:", $keyboard);
+$telegram->sendChatJoinRequestWebApp($queryId, "https://yourdomain.com/verify");
+```
+
+## Reaksiyalarni boshqarish — Bot API 10.0
+
+```php
+$telegram->deleteMessageReaction($chatId, $messageId, $userId);
+$telegram->deleteAllMessageReactions($chatId, $messageId);
+```
+
+## Poll (so'rovnoma) — Bot API 10.0
+
+Endi 1 tadan variant, media, faqat a'zolar uchun (`members_only`) va boshqa yangi parametrlar qo'llab-quvvatlanadi:
+
+```php
+$telegram->sendPoll($chatId, "Sevimli tilingiz?", ["PHP", "Python", "JS"], true, "regular", [
+    "members_only" => true,
+    "allows_multiple_answers" => false,
+]);
+```
+
+## Live Photo — Bot API 10.0
+
+```php
+$telegram->sendLivePhoto($chatId, $fileId, "Jonli surat");
+```
+
 ## Emoji ID ni qanday topish
 
 1. Botga premium emoji yuboring — bot ID ni qaytaradi
@@ -81,6 +166,21 @@ $telegram->sendPremiumMessage($chatId, "Tanlang:", "HTML", $keyboard);
 | `sendMessageEntities()` | Entities bilan xabar (premium emoji) |
 | `sendPremiumMessage()` | Premium emoji + inline tugmalar |
 | `editPremiumMessage()` | Premium xabarni tahrirlash |
+| `sendEphemeralMessage()` | Maxfiy (ephemeral) xabar yuborish |
+| `editEphemeralMessageText()` | Ephemeral xabar matnini tahrirlash |
+| `editEphemeralMessageReplyMarkup()` | Ephemeral xabar tugmalarini tahrirlash |
+| `deleteEphemeralMessage()` | Ephemeral xabarni o'chirish |
+| `sendRichMessage()` | Bloklardan iborat rich xabar yuborish |
+| `sendRichMessageDraft()` | Rich xabar qoralamasini yuborish |
+| `answerChatJoinRequestQuery()` | Qo'shilish so'roviga interaktiv javob |
+| `sendChatJoinRequestWebApp()` | Qo'shilish so'roviga Web App yuborish |
+| `answerGuestQuery()` | Guest so'roviga javob (guest mode) |
+| `deleteMessageReaction()` | Foydalanuvchi reaksiyasini o'chirish |
+| `deleteAllMessageReactions()` | Barcha reaksiyalarni o'chirish |
+| `getChatAdministrators()` | Chat adminlarini olish |
+| `getUserPersonalChatMessages()` | Foydalanuvchi shaxsiy chat xabarlari |
+| `sendLivePhoto()` | Live Photo yuborish |
+| `sendPoll()` | So'rovnoma yuborish (media, members_only) |
 | `answerCallbackQuery()` | Callback javob |
 | `utf16len()` | UTF-16 uzunlik hisoblash |
 | `sendPhoto()` | Rasm yuborish |
