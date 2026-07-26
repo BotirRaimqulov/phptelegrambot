@@ -160,6 +160,190 @@ class Telegram
         return $this->botJson('editMessageText', $params);
     }
 
+    public function sendEphemeralMessage($chatId, $receiverUserId, $text, $parseMode = null, $keyboard = null, $callbackQueryId = null)
+    {
+        $params = [
+            'chat_id' => $chatId,
+            'receiver_user_id' => $receiverUserId,
+            'text' => $text,
+        ];
+        if ($parseMode) {
+            $params['parse_mode'] = $parseMode;
+        }
+        if ($keyboard) {
+            $params['reply_markup'] = ['inline_keyboard' => $keyboard];
+        }
+        if ($callbackQueryId) {
+            $params['callback_query_id'] = $callbackQueryId;
+        }
+        return $this->botJson('sendMessage', $params);
+    }
+
+    public function editEphemeralMessageText($chatId, $ephemeralMessageId, $text, $parseMode = null, $keyboard = null)
+    {
+        $params = [
+            'chat_id' => $chatId,
+            'ephemeral_message_id' => $ephemeralMessageId,
+            'text' => $text,
+        ];
+        if ($parseMode) {
+            $params['parse_mode'] = $parseMode;
+        }
+        if ($keyboard) {
+            $params['reply_markup'] = ['inline_keyboard' => $keyboard];
+        }
+        return $this->botJson('editEphemeralMessageText', $params);
+    }
+
+    public function editEphemeralMessageReplyMarkup($chatId, $ephemeralMessageId, $keyboard = null)
+    {
+        $params = [
+            'chat_id' => $chatId,
+            'ephemeral_message_id' => $ephemeralMessageId,
+        ];
+        if ($keyboard) {
+            $params['reply_markup'] = ['inline_keyboard' => $keyboard];
+        }
+        return $this->botJson('editEphemeralMessageReplyMarkup', $params);
+    }
+
+    public function deleteEphemeralMessage($chatId, $ephemeralMessageId)
+    {
+        $params = [
+            'chat_id' => $chatId,
+            'ephemeral_message_id' => $ephemeralMessageId,
+        ];
+        return $this->botJson('deleteEphemeralMessage', $params);
+    }
+
+    public function sendRichMessage($chatId, $blocks, $keyboard = null)
+    {
+        $params = [
+            'chat_id' => $chatId,
+            'rich_message' => ['blocks' => $blocks],
+        ];
+        if ($keyboard) {
+            $params['reply_markup'] = ['inline_keyboard' => $keyboard];
+        }
+        return $this->botJson('sendMessage', $params);
+    }
+
+    public function sendRichMessageDraft($chatId, $blocks)
+    {
+        $params = [
+            'chat_id' => $chatId,
+            'rich_message' => ['blocks' => $blocks],
+        ];
+        return $this->botJson('sendRichMessageDraft', $params);
+    }
+
+    public function answerChatJoinRequestQuery($queryId, $text = null, $keyboard = null)
+    {
+        $params = [
+            'query_id' => $queryId,
+        ];
+        if ($text) {
+            $params['text'] = $text;
+        }
+        if ($keyboard) {
+            $params['reply_markup'] = ['inline_keyboard' => $keyboard];
+        }
+        return $this->botJson('answerChatJoinRequestQuery', $params);
+    }
+
+    public function sendChatJoinRequestWebApp($queryId, $webAppUrl)
+    {
+        $params = [
+            'query_id' => $queryId,
+            'web_app' => ['url' => $webAppUrl],
+        ];
+        return $this->botJson('sendChatJoinRequestWebApp', $params);
+    }
+
+    public function answerGuestQuery($guestQueryId, $text, $parseMode = null, $keyboard = null)
+    {
+        $params = [
+            'guest_query_id' => $guestQueryId,
+            'text' => $text,
+        ];
+        if ($parseMode) {
+            $params['parse_mode'] = $parseMode;
+        }
+        if ($keyboard) {
+            $params['reply_markup'] = ['inline_keyboard' => $keyboard];
+        }
+        return $this->botJson('answerGuestQuery', $params);
+    }
+
+    public function deleteMessageReaction($chatId, $messageId, $userId)
+    {
+        $params = [
+            'chat_id' => $chatId,
+            'message_id' => $messageId,
+            'user_id' => $userId,
+        ];
+        return $this->botJson('deleteMessageReaction', $params);
+    }
+
+    public function deleteAllMessageReactions($chatId, $messageId)
+    {
+        $params = [
+            'chat_id' => $chatId,
+            'message_id' => $messageId,
+        ];
+        return $this->botJson('deleteAllMessageReactions', $params);
+    }
+
+    public function getChatAdministrators($chatId, $returnBots = false)
+    {
+        $params = [
+            'chat_id' => $chatId,
+            'return_bots' => $returnBots,
+        ];
+        return $this->botJson('getChatAdministrators', $params);
+    }
+
+    public function getUserPersonalChatMessages($userId, $offsetMessageId = null, $limit = null)
+    {
+        $params = [
+            'user_id' => $userId,
+        ];
+        if ($offsetMessageId !== null) {
+            $params['offset_message_id'] = $offsetMessageId;
+        }
+        if ($limit !== null) {
+            $params['limit'] = $limit;
+        }
+        return $this->botJson('getUserPersonalChatMessages', $params);
+    }
+
+    public function sendLivePhoto($chatId, $livePhoto, $caption = null, $parseMode = null, $replyMarkup = null)
+    {
+        $params = [
+            'chat_id' => $chatId,
+            'live_photo' => $livePhoto,
+            'caption' => $caption,
+            'parse_mode' => $parseMode,
+            'reply_markup' => $replyMarkup,
+        ];
+        return $this->bot('sendLivePhoto', $params);
+    }
+
+    public function sendPoll($chatId, $question, $options, $isAnonymous = true, $type = 'regular', $extra = [])
+    {
+        $params = [
+            'chat_id' => $chatId,
+            'question' => $question,
+            'options' => $options,
+            'is_anonymous' => $isAnonymous,
+            'type' => $type,
+        ];
+        foreach ($extra as $key => $value) {
+            $params[$key] = $value;
+        }
+        return $this->botJson('sendPoll', $params);
+    }
+
     public function answerCallbackQuery($callbackQueryId, $text = null, $showAlert = false)
     {
         $params = [
@@ -288,7 +472,7 @@ class Telegram
     {
         $params = [
             'url' => $url,
-            'allowed_updates' => ["message", "edited_channel_post", "callback_query"]
+            'allowed_updates' => ["message", "edited_channel_post", "callback_query", "bot_subscription_updated", "guest_message", "chat_join_request"]
         ];
         return $this->bot('setWebhook', $params);
     }
