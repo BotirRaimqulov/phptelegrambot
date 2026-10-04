@@ -1,13 +1,26 @@
 <?php
-ini_set('display_errors', 1);
-ini_set('display_startup_errors', 1);
+ini_set('display_errors', 0);
 error_reporting(E_ALL);
 
-include 'telegram.php';
+require_once __DIR__ . '/telegram.php';
 
-$api_key = 'BOT_TOKEN';
+// Sozlamalar: muhit o'zgaruvchilari yoki config.php (config.example.php dan nusxa oling)
+$config = is_file(__DIR__ . '/config.php') ? require __DIR__ . '/config.php' : [];
+$api_key = getenv('BOT_TOKEN') ?: ($config['bot_token'] ?? '');
+$webhook_secret = getenv('WEBHOOK_SECRET') ?: ($config['webhook_secret'] ?? '');
+$admin_ids = array_filter(array_map('trim', explode(',', getenv('ADMIN_IDS') ?: ($config['admin_ids'] ?? ''))));
+
+if ($api_key === '') {
+    http_response_code(500);
+    exit('BOT_TOKEN sozlanmagan');
+}
+
 $telegram = new Telegram($api_key);
-$bot_name = "BOT_USER";
+
+if ($webhook_secret !== '' && !$telegram->verifyWebhookSecret($webhook_secret)) {
+    http_response_code(403);
+    exit;
+}
 
 $FIRE = "5368324170671202286";
 $STAR = "5471952986970267163";
@@ -16,17 +29,26 @@ $CHECK = "5382322671028990089";
 
 $update = $telegram->update();
 if ($update) {
+    $chatId = null;
+    $tx = '';
+    $type = '';
+    $entities = [];
+    $fromId = null;
 
     if (isset($update['message'])) {
         $msg = $update['message'];
-        $first_name = $msg['from']['first_name'];
-        $last_name = $msg['last_name'] ?? '';
+        $first_name = $msg['from']['first_name'] ?? '';
+        $last_name = $msg['from']['last_name'] ?? '';
+        $fromId = $msg['from']['id'] ?? null;
         $type = $msg['chat']['type'];
         $tx = $msg['text'] ?? '';
         $cid = $msg['chat']['id'];
-        $chatId = $update['message']['chat']['id'];
+        $chatId = $cid;
         $mid = $msg['message_id'];
         $entities = $msg['entities'] ?? [];
+
+        // "/cmd@botname arg" -> "/cmd arg" (guruhlarda)
+        $tx = preg_replace('/^(\/\w+)@\w+/', '$1', $tx);
     }
 
     if (isset($update['callback_query'])) {
@@ -35,11 +57,32 @@ if ($update) {
         $cid = $update['callback_query']['message']['chat']['id'];
         $chatId = $update['callback_query']['message']['chat']['id'];
         $callbackId = $update['callback_query']['id'];
+        $cbUser = $update['callback_query']['from'];
 
-        $telegram->answerCallbackQuery($callbackId, "$data bosildi");
+        switch ($data) {
+            case 'profile':
+                $name = trim(($cbUser['first_name'] ?? '') . ' ' . ($cbUser['last_name'] ?? ''));
+                $telegram->answerCallbackQuery($callbackId, "$name\nID: {$cbUser['id']}", true);
+                break;
+            case 'settings':
+                $telegram->answerCallbackQuery($callbackId);
+                $telegram->editMessageText($chatId, $mid, "⚙️ Sozlamalar hozircha mavjud emas.");
+                break;
+            case 'cancel':
+                $telegram->answerCallbackQuery($callbackId, "Bekor qilindi");
+                $telegram->deleteMessage($chatId, $mid);
+                break;
+            case 'join_ok':
+                $telegram->answerCallbackQuery($callbackId, "Tasdiqlandi");
+                break;
+            default:
+                $telegram->answerCallbackQuery($callbackId, "$data bosildi");
+        }
     }
 
-    $telegram->sendChatAction($chatId, 'typing');
+    if ($chatId !== null && $tx !== '') {
+        $telegram->sendChatAction($chatId, 'typing');
+    }
 
 
     if ($tx == "/start") {
@@ -115,7 +158,7 @@ if ($update) {
 
     if ($tx == "/rich") {
         $blocks = [
-            ["type" => "heading", "text" => "Bot API 10.2"],
+            ["type" => "heading", "text" => "Bot API 10.3"],
             ["type" => "paragraph", "text" => "Bu rich message bloklardan iborat."],
             ["type" => "quotation", "text" => "Bloklar orqali chiroyli formatlash."],
             ["type" => "preformatted", "text" => "echo 'Salom, dunyo!';"],
@@ -130,7 +173,9 @@ if ($update) {
         $targetUserId = array_pop($args);
         $messageText = implode(" ", $args);
 
-        if (empty($messageText) || !ctype_digit((string)$targetUserId)) {
+        if (!in_array((string)$fromId, array_map('strval', $admin_ids), true)) {
+            $telegram->sendMessage($chatId, "Bu buyruq faqat bot adminlari uchun.");
+        } elseif (empty($messageText) || !ctype_digit((string)$targetUserId)) {
             $telegram->sendMessage($chatId, "Foydalanish: /secret {matn} {user_id}");
         } else {
             $telegram->sendEphemeralMessage($chatId, $targetUserId, $messageText, "HTML");
@@ -181,7 +226,7 @@ if ($update) {
     }
 
 
-    if (isset($entities) && !empty($entities)) {
+    if (!empty($entities) && $chatId !== null) {
         $ids = [];
         foreach ($entities as $e) {
             if ($e['type'] === 'custom_emoji' && isset($e['custom_emoji_id'])) {
