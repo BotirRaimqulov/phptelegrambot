@@ -69,7 +69,7 @@ $keyboard = [
 $telegram->sendPremiumMessage($chatId, "Tanlang:", "HTML", $keyboard);
 ```
 
-## Ephemeral (maxfiy) xabarlar — Bot API 10.2
+## Ephemeral (maxfiy) xabarlar — Bot API 10.2 / 10.3
 
 Guruhda faqat bitta foydalanuvchiga ko'rinadigan xabar yuborish mumkin. Xabarni bot va qabul qiluvchi foydalanuvchi ko'radi, boshqalar ko'rmaydi.
 
@@ -88,6 +88,12 @@ Callback query ga javob sifatida (tugma bosilganda) yuborish:
 
 ```php
 $telegram->sendEphemeralMessage($chatId, $userId, "Faqat sizga.", "HTML", null, $callbackQueryId);
+```
+
+Bot API 10.3 da `receiver_user_id` va `callback_query_id` o'rniga `ephemeral_message_parameters` ishlatiladi. Uni 7-argument sifatida tayyor massiv ko'rinishida bering (maydonlari rasmiy hujjatga muvofiq bo'lishi kerak; wrapper ularni o'zgartirmay yuboradi):
+
+```php
+$telegram->sendEphemeralMessage($chatId, null, "Faqat sizga.", "HTML", null, null, $ephemeralMessageParameters);
 ```
 
 Ephemeral xabarni tahrirlash va o'chirish:
@@ -213,3 +219,14 @@ $telegram->sendLivePhoto($chatId, $fileId, "Jonli surat");
 Premium emoji yuborilsa — avtomatik ID ni qaytaradi.
 
 Guruhda guest so'rov (`guest_message`) yoki qo'shilish so'rovi (`chat_join_request`) kelganda bot avtomatik javob beradi.
+
+
+## Sozlash va xavfsizlik
+
+Token kodda saqlanmaydi. `config.example.php` dan `config.php` ga nusxa oling (git'ga kirmaydi) yoki `BOT_TOKEN`, `WEBHOOK_SECRET`, `ADMIN_IDS` muhit o'zgaruvchilarini bering.
+
+```php
+$telegram->setWebhook('https://example.com/bot.php', 'MAXFIY_TOKEN');
+```
+
+`WEBHOOK_SECRET` berilsa, `bot.php` `X-Telegram-Bot-Api-Secret-Token` sarlavhasi mos kelmagan so'rovlarni 403 bilan rad etadi. `/secret` faqat `ADMIN_IDS` dagi foydalanuvchilar uchun ishlaydi.
