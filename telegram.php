@@ -8,83 +8,81 @@ class Telegram
         $this->api_key = $api_key;
     }
 
-    public function bot($method, $datas = [])
+    /**
+     * Bitta HTTP qatlami. Fayl (CURLFile) bo'lmasa JSON, bo'lsa multipart yuboradi.
+     * null qiymatlar tashlab yuboriladi; ichma-ich massivlar JSON'ga o'tkaziladi.
+     */
+    protected function request($method, $datas = [], $forceJson = false, $retry = true)
     {
-        $url = "https://api.telegram.org/bot" . $this->api_key . "/" . $method;
-        $curl = curl_init();
+        $datas = array_filter((array)$datas, static fn($v) => $v !== null);
 
-        curl_setopt_array($curl, array(
-            CURLOPT_URL => $url,
-            CURLOPT_RETURNTRANSFER => true,
-            CURLOPT_ENCODING => '',
-            CURLOPT_TIMEOUT => 0,
-            CURLOPT_FOLLOWLOCATION => true,
-            CURLOPT_HTTP_VERSION => CURL_HTTP_VERSION_1_1,
-            CURLOPT_CUSTOMREQUEST => 'POST',
-            CURLOPT_POSTFIELDS => $datas
-        ));
-
-        $multi_curl = curl_multi_init();
-        curl_multi_add_handle($multi_curl, $curl);
-
-        $active = null;
-        do {
-            $status = curl_multi_exec($multi_curl, $active);
-            if ($active) {
-                curl_multi_select($multi_curl);
+        $hasFile = false;
+        foreach ($datas as $v) {
+            if ($v instanceof \CURLFile) {
+                $hasFile = true;
+                break;
             }
-        } while ($status === CURLM_CALL_MULTI_PERFORM || $active);
-
-        $res = curl_multi_getcontent($curl);
-
-        curl_multi_remove_handle($multi_curl, $curl);
-        curl_multi_close($multi_curl);
-
-        if (curl_error($curl)) {
-            throw new \Exception(curl_error($curl));
         }
 
-        return json_decode($res, true);
+        $opts = [
+            CURLOPT_URL => "https://api.telegram.org/bot" . $this->api_key . "/" . $method,
+            CURLOPT_RETURNTRANSFER => true,
+            CURLOPT_ENCODING => '',
+            CURLOPT_CONNECTTIMEOUT => 10,
+            CURLOPT_TIMEOUT => $hasFile ? 120 : 30,
+            CURLOPT_HTTP_VERSION => CURL_HTTP_VERSION_1_1,
+            CURLOPT_POST => true,
+        ];
+
+        if ($hasFile && !$forceJson) {
+            foreach ($datas as $k => $v) {
+                if (is_array($v)) {
+                    $datas[$k] = json_encode($v);
+                } elseif (is_bool($v)) {
+                    $datas[$k] = $v ? 'true' : 'false';
+                }
+            }
+            $opts[CURLOPT_POSTFIELDS] = $datas;
+        } else {
+            $opts[CURLOPT_HTTPHEADER] = ['Content-Type: application/json'];
+            $opts[CURLOPT_POSTFIELDS] = json_encode($datas);
+        }
+
+        $curl = curl_init();
+        curl_setopt_array($curl, $opts);
+        $res = curl_exec($curl);
+        $err = curl_error($curl);
+        curl_close($curl);
+
+        if ($res === false) {
+            throw new \Exception("Telegram so'rovi muvaffaqiyatsiz ($method): $err");
+        }
+
+        $decoded = json_decode($res, true);
+        if (!is_array($decoded)) {
+            throw new \Exception("Telegram noto'g'ri javob qaytardi ($method)");
+        }
+
+        if (empty($decoded['ok'])) {
+            $wait = $decoded['parameters']['retry_after'] ?? null;
+            if ($retry && ($decoded['error_code'] ?? 0) == 429 && $wait !== null && $wait <= 5) {
+                sleep((int)$wait);
+                return $this->request($method, $datas, $forceJson, false);
+            }
+            error_log("Telegram API xatosi ($method): " . ($decoded['error_code'] ?? '?') . ' ' . ($decoded['description'] ?? ''));
+        }
+
+        return $decoded;
+    }
+
+    public function bot($method, $datas = [])
+    {
+        return $this->request($method, $datas);
     }
 
     public function botJson($method, $datas = [])
     {
-        $url = "https://api.telegram.org/bot" . $this->api_key . "/" . $method;
-        $curl = curl_init();
-
-        curl_setopt_array($curl, array(
-            CURLOPT_URL => $url,
-            CURLOPT_RETURNTRANSFER => true,
-            CURLOPT_ENCODING => '',
-            CURLOPT_TIMEOUT => 0,
-            CURLOPT_FOLLOWLOCATION => true,
-            CURLOPT_HTTP_VERSION => CURL_HTTP_VERSION_1_1,
-            CURLOPT_CUSTOMREQUEST => 'POST',
-            CURLOPT_HTTPHEADER => ['Content-Type: application/json'],
-            CURLOPT_POSTFIELDS => json_encode($datas)
-        ));
-
-        $multi_curl = curl_multi_init();
-        curl_multi_add_handle($multi_curl, $curl);
-
-        $active = null;
-        do {
-            $status = curl_multi_exec($multi_curl, $active);
-            if ($active) {
-                curl_multi_select($multi_curl);
-            }
-        } while ($status === CURLM_CALL_MULTI_PERFORM || $active);
-
-        $res = curl_multi_getcontent($curl);
-
-        curl_multi_remove_handle($multi_curl, $curl);
-        curl_multi_close($multi_curl);
-
-        if (curl_error($curl)) {
-            throw new \Exception(curl_error($curl));
-        }
-
-        return json_decode($res, true);
+        return $this->request($method, $datas, true);
     }
 
     public function sendMessage($chatId, $text, $parseMode = null, $replyMarkup = null)
@@ -160,21 +158,27 @@ class Telegram
         return $this->botJson('editMessageText', $params);
     }
 
-    public function sendEphemeralMessage($chatId, $receiverUserId, $text, $parseMode = null, $keyboard = null, $callbackQueryId = null)
+    /**
+     * Ephemeral xabar. Bot API 10.3 da receiver_user_id / callback_query_id o'rniga
+     * ephemeral_message_parameters ishlatiladi. $ephemeralMessageParameters berilsa,
+     * u o'zgartirilmagan holda yuboriladi (maydonlari rasmiy hujjatga muvofiq bo'lishi kerak);
+     * aks holda eski (10.2) maydonlar yuboriladi.
+     */
+    public function sendEphemeralMessage($chatId, $receiverUserId, $text, $parseMode = null, $keyboard = null, $callbackQueryId = null, $ephemeralMessageParameters = null)
     {
         $params = [
             'chat_id' => $chatId,
-            'receiver_user_id' => $receiverUserId,
             'text' => $text,
+            'parse_mode' => $parseMode,
         ];
-        if ($parseMode) {
-            $params['parse_mode'] = $parseMode;
+        if ($ephemeralMessageParameters !== null) {
+            $params['ephemeral_message_parameters'] = $ephemeralMessageParameters;
+        } else {
+            $params['receiver_user_id'] = $receiverUserId;
+            $params['callback_query_id'] = $callbackQueryId;
         }
         if ($keyboard) {
             $params['reply_markup'] = ['inline_keyboard' => $keyboard];
-        }
-        if ($callbackQueryId) {
-            $params['callback_query_id'] = $callbackQueryId;
         }
         return $this->botJson('sendMessage', $params);
     }
@@ -468,18 +472,38 @@ class Telegram
         ];
         return $this->bot('deleteMessage', $params);
     }
-    public function setWebhook($url)
+    public function setWebhook($url, $secretToken = null)
     {
         $params = [
             'url' => $url,
+            'secret_token' => $secretToken,
             'allowed_updates' => ["message", "edited_channel_post", "callback_query", "bot_subscription_updated", "guest_message", "chat_join_request"]
         ];
         return $this->bot('setWebhook', $params);
     }
 
+    public function getMe()
+    {
+        return $this->bot('getMe');
+    }
+
+    public function setMyCommands($commands)
+    {
+        return $this->bot('setMyCommands', ['commands' => $commands]);
+    }
+
     public function utf16len($s)
     {
         return strlen(mb_convert_encoding($s, "UTF-16LE", "UTF-8")) / 2;
+    }
+
+    /**
+     * Webhook so'rovining haqiqiyligini tekshiradi (X-Telegram-Bot-Api-Secret-Token).
+     */
+    public function verifyWebhookSecret($secretToken)
+    {
+        $header = $_SERVER['HTTP_X_TELEGRAM_BOT_API_SECRET_TOKEN'] ?? '';
+        return $secretToken !== '' && hash_equals((string)$secretToken, (string)$header);
     }
 
     public function update()
