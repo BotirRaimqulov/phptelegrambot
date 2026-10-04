@@ -4,7 +4,6 @@ error_reporting(E_ALL);
 
 require_once __DIR__ . '/telegram.php';
 
-// Sozlamalar: muhit o'zgaruvchilari yoki config.php (config.example.php dan nusxa oling)
 $config = is_file(__DIR__ . '/config.php') ? require __DIR__ . '/config.php' : [];
 $api_key = getenv('BOT_TOKEN') ?: ($config['bot_token'] ?? '');
 $webhook_secret = getenv('WEBHOOK_SECRET') ?: ($config['webhook_secret'] ?? '');
@@ -47,7 +46,6 @@ if ($update) {
         $mid = $msg['message_id'];
         $entities = $msg['entities'] ?? [];
 
-        // "/cmd@botname arg" -> "/cmd arg" (guruhlarda)
         $tx = preg_replace('/^(\/\w+)@\w+/', '$1', $tx);
     }
 
