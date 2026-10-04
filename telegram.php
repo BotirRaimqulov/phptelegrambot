@@ -8,10 +8,6 @@ class Telegram
         $this->api_key = $api_key;
     }
 
-    /**
-     * Bitta HTTP qatlami. Fayl (CURLFile) bo'lmasa JSON, bo'lsa multipart yuboradi.
-     * null qiymatlar tashlab yuboriladi; ichma-ich massivlar JSON'ga o'tkaziladi.
-     */
     protected function request($method, $datas = [], $forceJson = false, $retry = true)
     {
         $datas = array_filter((array)$datas, static fn($v) => $v !== null);
@@ -113,14 +109,6 @@ class Telegram
         return $this->botJson('sendMessage', $params);
     }
 
-    //
-    //   $keyboard = [
-    //       [
-    //           ["text" => "Ha", "callback_data" => "yes", "icon_custom_emoji_id" => "...", "style" => "success"],
-    //           ["text" => "Yoq", "callback_data" => "no", "style" => "danger"],
-    //       ],
-    //   ];
-    //
     public function sendPremiumMessage($chatId, $text, $parseMode = null, $keyboard = null, $entities = null)
     {
         $params = [
@@ -158,12 +146,6 @@ class Telegram
         return $this->botJson('editMessageText', $params);
     }
 
-    /**
-     * Ephemeral xabar. Bot API 10.3 da receiver_user_id / callback_query_id o'rniga
-     * ephemeral_message_parameters ishlatiladi. $ephemeralMessageParameters berilsa,
-     * u o'zgartirilmagan holda yuboriladi (maydonlari rasmiy hujjatga muvofiq bo'lishi kerak);
-     * aks holda eski (10.2) maydonlar yuboriladi.
-     */
     public function sendEphemeralMessage($chatId, $receiverUserId, $text, $parseMode = null, $keyboard = null, $callbackQueryId = null, $ephemeralMessageParameters = null)
     {
         $params = [
@@ -497,9 +479,6 @@ class Telegram
         return strlen(mb_convert_encoding($s, "UTF-16LE", "UTF-8")) / 2;
     }
 
-    /**
-     * Webhook so'rovining haqiqiyligini tekshiradi (X-Telegram-Bot-Api-Secret-Token).
-     */
     public function verifyWebhookSecret($secretToken)
     {
         $header = $_SERVER['HTTP_X_TELEGRAM_BOT_API_SECRET_TOKEN'] ?? '';
