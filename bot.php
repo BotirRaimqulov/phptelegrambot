@@ -3,6 +3,7 @@ ini_set('display_errors', 0);
 error_reporting(E_ALL);
 
 require_once __DIR__ . '/telegram.php';
+require_once __DIR__ . '/storage.php';
 
 $config = is_file(__DIR__ . '/config.php') ? require __DIR__ . '/config.php' : [];
 $api_key = getenv('BOT_TOKEN') ?: ($config['bot_token'] ?? '');
@@ -47,6 +48,13 @@ if ($update) {
         $entities = $msg['entities'] ?? [];
 
         $tx = preg_replace('/^(\/\w+)@\w+/', '$1', $tx);
+
+        try {
+            (new Storage($config['db_path'] ?? __DIR__ . '/data/bot.sqlite', 500))
+                ->touchChat($cid, $type, $msg['chat']['title'] ?? null);
+        } catch (\Throwable $e) {
+            error_log('Chat saqlanmadi: ' . $e->getMessage());
+        }
     }
 
     if (isset($update['callback_query'])) {
