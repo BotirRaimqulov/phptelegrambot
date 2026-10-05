@@ -230,3 +230,34 @@ $telegram->setWebhook('https://example.com/bot.php', 'MAXFIY_TOKEN');
 ```
 
 `WEBHOOK_SECRET` berilsa, `bot.php` `X-Telegram-Bot-Api-Secret-Token` sarlavhasi mos kelmagan so'rovlarni 403 bilan rad etadi. `/secret` faqat `ADMIN_IDS` dagi foydalanuvchilar uchun ishlaydi.
+
+
+## Broadcast (cron orqali)
+
+`broadcast.php` — CLI worker. Xabarlar SQLite navbatiga yoziladi (`storage.php`), cron esa ularni Telegram limitlariga mos tezlikda yuboradi. Bot ishiga ta'sir qilmaydi: webhook (`bot.php`) faqat yangi chatni bazaga yozadi, yuborishni alohida jarayon bajaradi.
+
+Chatlar botga birinchi xabar kelganda `chats` jadvaliga yoziladi. Boshqa ro'yxat kerak bo'lsa, `--file` bilan bering.
+
+```bash
+php broadcast.php add --from=ADMIN_CHAT_ID --message=XABAR_ID
+php broadcast.php add --text="Salom" --parse-mode=HTML --only=groups
+php broadcast.php add --text="Salom" --file=ids.txt
+php broadcast.php status
+php broadcast.php cancel 3
+```
+
+Cron (har daqiqada, `max_runtime` 60 soniyadan kichik bo'lishi kerak):
+
+```
+* * * * * php /yo'l/bot/broadcast.php run >> /yo'l/bot/data/broadcast.log 2>&1
+```
+
+Ishlash tartibi:
+- Tezlik `broadcast_rate` (standart 20/s) bilan cheklanadi, bu Telegramning ~30/s limitidan past, qolgani bot javoblariga qoladi.
+- Bitta guruhga `broadcast_group_interval` (standart 6 s) dan tez yuborilmaydi (guruh limiti 20 xabar/daqiqa).
+- 429 kelsa, `retry_after` gacha hamma yuborish to'xtaydi va keyingi cron ishga tushishida ham saqlanadi.
+- 403 va "chat not found" kabi xatolar chatni `blocked` deb belgilaydi va keyingi broadcastlar ro'yxatidan chiqaradi. 5xx va tarmoq xatolari eksponensial kutish bilan 5 martagacha qayta uriniladi.
+- Guruh supergroup'ga aylansa, yangi `chat_id` ga avtomatik o'tiladi.
+- Ikki cron bir vaqtda ishga tushmaydi (`flock`).
+
+`data/` papkasi ichida baza turadi. Apache uchun `.htaccess` avtomatik yoziladi, nginx'da esa `db_path` ni veb-ildizdan tashqariga ko'chiring.
