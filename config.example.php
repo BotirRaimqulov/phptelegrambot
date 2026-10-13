@@ -14,4 +14,6 @@ return [
     'broadcast_group_interval' => 6,
     // Bitta cron ishga tushishining maksimal davomiyligi (soniya), cron oralig'idan kichik bo'lsin
     'broadcast_max_runtime' => 50,
+    // Ixtiyoriy: mahalliy Bot API server yoki test uchun boshqa manzil
+    'api_base' => 'https://api.telegram.org',
 ];

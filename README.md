@@ -261,3 +261,19 @@ Ishlash tartibi:
 - Ikki cron bir vaqtda ishga tushmaydi (`flock`).
 
 `data/` papkasi ichida baza turadi. Apache uchun `.htaccess` avtomatik yoziladi, nginx'da esa `db_path` ni veb-ildizdan tashqariga ko'chiring.
+
+
+## Tezlik boti (`speedbot.php`)
+
+`sendMessage` so'rovining Telegram bilan aylanish vaqtini (ms) o'lchaydi. Alohida webhook sifatida o'rnating.
+
+```php
+$telegram->setWebhook('https://example.com/speedbot.php', 'MAXFIY_TOKEN', ['max_connections' => 100, 'drop_pending_updates' => true]);
+```
+
+Kod darajasidagi tezlashtirishlar:
+- `Telegram` klassi bitta cURL ulanishini qayta ishlatadi (keep-alive, `TCP_NODELAY`): bir so'rov ichidagi ikkinchi chaqiruv yangi TCP/TLS ulanishsiz ketadi.
+- `/start` javobi alohida API chaqiruvisiz, webhook javobining o'zida qaytariladi.
+- Har so'rovda fayl o'qilmaydi, ortiqcha o'zgaruvchilar va `var_dump` olib tashlangan.
+
+Ko'rsatilgan raqam serverning Telegram bilan masofasiga eng ko'p bog'liq: server Telegram ma'lumot markazlariga qancha yaqin bo'lsa, shuncha past bo'ladi. Birinchi `sendMessage` yangi ulanish ochgani uchun TCP/TLS qo'l siqishni ham o'z ichiga oladi.

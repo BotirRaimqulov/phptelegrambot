@@ -2,10 +2,13 @@
 class Telegram
 {
     protected $api_key;
+    protected $api_base;
+    protected $curl;
 
-    public function __construct($api_key)
+    public function __construct($api_key, $api_base = 'https://api.telegram.org')
     {
         $this->api_key = $api_key;
+        $this->api_base = rtrim($api_base, '/');
     }
 
     protected function request($method, $datas = [], $forceJson = false, $retry = true)
@@ -21,13 +24,15 @@ class Telegram
         }
 
         $opts = [
-            CURLOPT_URL => "https://api.telegram.org/bot" . $this->api_key . "/" . $method,
+            CURLOPT_URL => $this->api_base . "/bot" . $this->api_key . "/" . $method,
             CURLOPT_RETURNTRANSFER => true,
             CURLOPT_ENCODING => '',
             CURLOPT_CONNECTTIMEOUT => 10,
             CURLOPT_TIMEOUT => $hasFile ? 120 : 30,
             CURLOPT_HTTP_VERSION => CURL_HTTP_VERSION_1_1,
             CURLOPT_POST => true,
+            CURLOPT_TCP_NODELAY => true,
+            CURLOPT_TCP_KEEPALIVE => 1,
         ];
 
         if ($hasFile && !$forceJson) {
@@ -44,11 +49,14 @@ class Telegram
             $opts[CURLOPT_POSTFIELDS] = json_encode($datas);
         }
 
-        $curl = curl_init();
-        curl_setopt_array($curl, $opts);
-        $res = curl_exec($curl);
-        $err = curl_error($curl);
-        curl_close($curl);
+        if ($this->curl === null) {
+            $this->curl = curl_init();
+        } else {
+            curl_reset($this->curl);
+        }
+        curl_setopt_array($this->curl, $opts);
+        $res = curl_exec($this->curl);
+        $err = curl_error($this->curl);
 
         if ($res === false) {
             throw new \Exception("Telegram so'rovi muvaffaqiyatsiz ($method): $err");
@@ -454,9 +462,9 @@ class Telegram
         ];
         return $this->bot('deleteMessage', $params);
     }
-    public function setWebhook($url, $secretToken = null)
+    public function setWebhook($url, $secretToken = null, $extra = [])
     {
-        $params = [
+        $params = $extra + [
             'url' => $url,
             'secret_token' => $secretToken,
             'allowed_updates' => ["message", "edited_channel_post", "callback_query", "bot_subscription_updated", "guest_message", "chat_join_request"]
